@@ -1,2 +1,2 @@
 # coding_nuggets
-A collection of coding problems and games. 
+A collection of code snippets for programming questions and games.
