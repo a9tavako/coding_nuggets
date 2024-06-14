@@ -1,0 +1,25 @@
+class Solution:
+    """
+    Calculates the number of connected components in a graph via the adjacency matrix. 
+    """
+    def findNumOfComponents(self, isConnected: List[List[int]]) -> int:
+        visited = set()
+        n = len(isConnected)
+        
+        if n in {0,1}:
+            return n
+    
+        def dfs(node: int):
+            visited.add(node)
+            for other in range(n):
+                if isConnected[node][other] == 1 and other not in visited:
+                    visited.add(other)
+                    dfs(other)
+
+        num_components = 0               
+        for node in range(n):
+            if node not in visited:
+                num_components += 1
+                dfs(node)
+                
+        return num_components
