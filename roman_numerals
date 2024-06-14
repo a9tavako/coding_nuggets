@@ -1,0 +1,42 @@
+class Solution:
+    """
+    Given a Roman numerals like XCV it translates it into an integer, which is 95 in this case. 
+    """
+    values = {"I":1, "V": 5, "X":10, "L": 50, "C": 100, "D": 500, "M":1000}
+    
+    special_cases = {
+        "I": {"V", "X"},
+        "X": {"L", "C"},
+        "C": {"D", "M"},
+    }   
+        
+    def romanToInt(self, s: str) -> int:
+        n = len(s)
+        if n == 1:
+            return self.values.get(s)
+        
+        total = 0
+        i = 0
+        while i < n:
+            current_char = s[i]
+            next_char = s[i+1] if i <= n-2 else None
+            if self.is_special(current_char, next_char):
+                total += self.get_special_value(current_char, next_char)
+                i += 2
+            else:
+                total += self.values.get(current_char)
+                i += 1
+                
+        return total
+    
+    def is_special(self, current_char: str, next_char: str) -> bool:
+        if next_char is None:
+            return False
+        
+        return current_char in self.special_cases and next_char in self.special_cases.get(current_char) 
+        
+    def get_special_value(self, current_char: str, next_char: str) -> int:
+        if not self.is_special(current_char, next_char):
+            raise ValueError("get_special_value, inputs are not special")
+            
+        return self.values.get(next_char) - self.values.get(current_char)
