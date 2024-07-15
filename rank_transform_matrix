@@ -1,0 +1,212 @@
+// For https://leetcode.com/problems/rank-transform-of-a-matrix
+
+class Solution {
+    boolean debug = false;
+
+    public int[][] matrixRankTransform(int[][] matrix) {
+        PriorityQueue<Integer> queue = new PriorityQueue<Integer>();
+        Set<Integer> values = new HashSet<>();
+        Map<Integer, List<Cell>> value2Pos = new HashMap<>();
+
+        int rowCount = matrix.length;
+        int colCount = matrix[0].length;
+
+        int[][] ranks = new int[rowCount][colCount];
+        int[] rowRanks = new int[rowCount];
+        int[] colRanks = new int[colCount];
+
+        for (int i = 0; i < rowCount; i++) {
+            for (int j = 0; j < colCount; j++) {
+                int value = matrix[i][j];
+                if (!values.contains(value)) {
+                    queue.add(value);
+                    values.add(value);
+                }
+                value2Pos.computeIfAbsent(value, k -> new LinkedList<Cell>())
+                        .add(new Cell(i, j));
+            }
+        }
+
+        if (debug) {
+            System.out.println("values");
+            System.out.println(values);
+            System.out.println("values to position");
+            System.out.println(value2Pos);
+        }
+
+        while (!queue.isEmpty()) {
+            int current = queue.poll();
+            List<Cell> positions = value2Pos.get(current);
+            List<List<Cell>> groups = getGroups(positions);
+
+            if (debug) {
+                System.out.println("current");
+                System.out.println(current);
+                System.out.println("groups");
+                System.out.println(groups);
+            }
+            for (List<Cell> group : groups) {
+                processGroup(ranks, rowRanks, colRanks, group);
+            }
+        }
+
+        return ranks;
+    }
+
+    static class Cell {
+        int row;
+        int col;
+
+        Cell(int row, int col) {
+            this.row = row;
+            this.col = col;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+
+            if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+
+            Cell cell = (Cell) obj;
+            return (this.row == cell.row) && (this.col == cell.col);
+        }
+
+        @Override
+        public int hashCode() {
+            String str = toString();
+            return str.hashCode();
+        }
+
+        public String toString() {
+            return "Cell: " + row + "," + col;
+        }
+    }
+
+    public List<List<Cell>> getGroups(List<Cell> cells) {
+        UnionFind uf = new UnionFind(cells);
+        Map<Integer, List<Cell>> rowToCell = new HashMap<>();
+        Map<Integer, List<Cell>> colToCell = new HashMap<>();
+
+        for (Cell cell : cells) {
+            rowToCell.computeIfAbsent(cell.row, k -> new LinkedList<Cell>()).add(cell);
+            colToCell.computeIfAbsent(cell.col, k -> new LinkedList<Cell>()).add(cell);
+        }
+
+        for (int row : rowToCell.keySet()) {
+            Cell firstCell = rowToCell.get(row).get(0);
+            for (Cell cell : rowToCell.get(row)) {
+                uf.union(firstCell, cell);
+            }
+        }
+
+        for (int col : colToCell.keySet()) {
+            Cell firstCell = colToCell.get(col).get(0);
+            for (Cell cell : colToCell.get(col)) {
+                uf.union(firstCell, cell);
+            }
+        }
+
+        Map<Cell, List<Cell>> components = new HashMap<Cell, List<Cell>>();
+        for (Cell cell : cells) {
+            Cell root = uf.findRoot(cell);
+            components.computeIfAbsent(root, key -> new LinkedList<Cell>()).add(cell);
+        }
+
+        List<List<Cell>> ans = new LinkedList<List<Cell>>();
+        for (Cell root : components.keySet()) {
+            List<Cell> currentComponent = components.get(root);
+            ans.add(currentComponent);
+        }
+
+        return ans;
+    }
+
+    static class UnionFind {
+        private final Map<Cell, Integer> ranks = new HashMap<>();
+        private final Map<Cell, Cell> roots = new HashMap<>();
+
+        UnionFind(List<Cell> cells) {
+            for (Cell cell : cells) {
+                ranks.put(cell, 0);
+                roots.put(cell, cell);
+            }
+        }
+
+        public void union(Cell a, Cell b) {
+            Cell rootA = findRoot(a);
+            Cell rootB = findRoot(b);
+            if (rootA.equals(rootB)) {
+                return;
+            }
+
+            int rankRootA = ranks.get(rootA);
+            int rankRootB = ranks.get(rootB);
+
+            if (rankRootA > rankRootB) {
+                roots.put(rootB, rootA);
+            } else if (rankRootB > rankRootA) {
+                roots.put(rootA, rootB);
+            } else {
+                roots.put(rootA, rootB);
+                ranks.put(rootB, rankRootB + 1);
+            }
+        }
+
+        public Cell findRoot(Cell a) {
+            Cell current = a;
+            while (!current.equals(roots.get(current))) {
+                current = roots.get(current);
+            }
+            Cell root = current;
+
+            current = a;
+            while (!current.equals(root)) {
+                Cell up = roots.get(current);
+                roots.put(current, root);
+                current = up;
+            }
+
+            return root;
+        }
+    }
+
+    public void processGroup(
+            int[][] ranks,
+            int[] rowRanks,
+            int[] colRanks,
+            List<Cell> group
+    ) {
+        List<Integer> rows = new LinkedList<Integer>();
+        List<Integer> cols = new LinkedList<Integer>();
+
+        for (Cell cell : group) {
+            rows.add(cell.row);
+            cols.add(cell.col);
+        }
+
+        int maxRankSoFar = 0;
+        for (int row : rows) {
+            maxRankSoFar = Math.max(maxRankSoFar, rowRanks[row]);
+        }
+        for (int col : cols) {
+            maxRankSoFar = Math.max(maxRankSoFar, colRanks[col]);
+        }
+
+        int rankToAssign = maxRankSoFar + 1;
+        for (Cell cell : group) {
+            ranks[cell.row][cell.col] = rankToAssign;
+            rowRanks[cell.row] = rankToAssign;
+            colRanks[cell.col] = rankToAssign;
+        }
+
+        if (debug) {
+            System.out.println("Assigned value " + rankToAssign + " to group " + group);
+        }
+        return;
+    }
+}
